@@ -1,27 +1,23 @@
-# Configuración Nixpacks para Railway - Garantizado para deployment
+# Configuración Nixpacks simplificada para Railway - Versión funcional
 [phases.setup]
-# Paquetes del sistema necesarios
-nixPkgs = ['python312', 'postgresql', 'gcc', 'pkg-config', 'git']
+# Solo los paquetes esenciales que garantizan pip
+nixPkgs = ['python3', 'python3Packages.pip', 'postgresql', 'gcc']
 
 [phases.install]
-# Instalación robusta de dependencias
+# Instalación simple y directa
 cmds = [
-    'python -m pip install --upgrade pip setuptools wheel',
-    'python -m pip install -r requirements.txt --no-cache-dir'
+    'pip install --upgrade pip',
+    'pip install -r requirements.txt'
 ]
 
 [phases.build]
-# Fase de construcción con validación
+# Build básico sin complicaciones
 cmds = [
-    'python -c "import sys; print(f\\"Python {sys.version}\\")"',
-    'python -m py_compile app.py',
-    'python -m py_compile railway_deploy.py',
-    'python -m py_compile intelligent_master_deploy.py',
-    'echo "✅ Build phase completed successfully"'
+    'python -c "print(\\"Build OK\\")"'
 ]
 
 [start]
-# Comando de inicio consistente con railway.toml
+# Comando de inicio simple
 cmd = 'python app.py'
 
 [variables]

@@ -1,0 +1,35 @@
+# Configuración Nixpacks alternativa para Railway - Solución robusta pip
+[phases.setup]
+# Enfoque alternativo: usar Python con herramientas de desarrollo
+nixPkgs = ['python312', 'python312Packages.pip', 'python312Packages.setuptools', 'python312Packages.wheel', 'postgresql', 'gcc', 'pkg-config']
+
+[phases.install]
+# Instalar con verificación de pip
+cmds = [
+    'which python3 || echo "python3 not found"',
+    'which python || echo "python not found"',
+    'python3 --version || python --version',
+    'python3 -m pip --version || python -m pip --version || echo "Installing pip..."',
+    'python3 -c "import ensurepip; ensurepip.bootstrap()" || echo "ensurepip not available"',
+    'python3 -m pip install --upgrade pip setuptools wheel || echo "pip upgrade failed"',
+    'python3 -m pip install -r requirements.txt --no-cache-dir || python -m pip install -r requirements.txt --no-cache-dir'
+]
+
+[phases.build]
+# Validación con fallback
+cmds = [
+    'python3 --version || python --version',
+    'python3 -c "import sys; print(f\\"Python {sys.version}\\")" || python -c "import sys; print(f\\"Python {sys.version}\\")"',
+    'python3 -m py_compile app.py || python -m py_compile app.py',
+    'echo "Build validation completed"'
+]
+
+[start]
+# Comando con fallback automático
+cmd = 'python3 app.py || python app.py'
+
+[variables]
+PYTHONPATH = '.'
+PYTHONUNBUFFERED = '1'
+PYTHONDONTWRITEBYTECODE = '1'
+PORT = '8080'

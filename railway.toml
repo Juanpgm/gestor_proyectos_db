@@ -1,6 +1,7 @@
 [build]
-# Especificar explícitamente que es un proyecto Python
+# Especificar builder con fallback a Docker
 builder = "NIXPACKS"
+# Si Nixpacks falla, Railway usará automáticamente el Dockerfile
 
 [deploy]
 # Comando para iniciar la aplicación
