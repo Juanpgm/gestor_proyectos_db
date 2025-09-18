@@ -75,41 +75,11 @@ def main():
         # Configurar entorno
         setup_railway_environment()
         
-        logger.info("Iniciando sistema inteligente...")
+        logger.info("Iniciando servidor HTTP para healthcheck...")
         
-        # Intentar cargar y ejecutar el sistema inteligente
-        try:
-            from intelligent_master_deploy import IntelligentDeploymentSystem
-            
-            logger.info("Sistema inteligente cargado exitosamente")
-            
-            # Crear e inicializar sistema
-            deployment_system = IntelligentDeploymentSystem()
-            
-            # Ejecutar deployment inteligente
-            logger.info("Ejecutando deployment inteligente...")
-            deployment_system.execute_intelligent_deployment()
-            
-            # Si llegamos aqui, el deployment fue exitoso
-            logger.info("Deployment inteligente completado")
-            
-            # Mantener aplicacion viva
-            keep_alive()
-            
-        except ImportError as e:
-            logger.error(f"Error importando sistema inteligente: {e}")
-            logger.info("Intentando fallback a modo basico...")
-            
-            # Fallback a modo basico
-            keep_alive_basic()
-            
-        except Exception as e:
-            logger.error(f"Error en sistema inteligente: {e}")
-            logger.info("Cambiando a modo basico...")
-            
-            # Fallback a modo basico
-            keep_alive_basic()
-    
+        # SIEMPRE iniciar servidor HTTP primero para healthcheck
+        start_http_server()
+        
     except Exception as e:
         logger.error(f"Error critico en aplicacion: {e}")
         
@@ -121,42 +91,83 @@ def main():
             logger.error(f"Error final: {final_error}")
             sys.exit(1)
 
-def keep_alive():
-    """Mantener aplicacion viva con funcionalidad completa"""
-    logger.info("Aplicacion iniciada - modo inteligente")
-    logger.info("Sistema de monitoreo activo")
+def start_http_server():
+    """Iniciar servidor HTTP con sistema inteligente en background"""
+    import http.server
+    import socketserver
+    from threading import Thread
+    
+    port = int(os.environ.get('PORT', 8080))
+    
+    class HealthHandler(http.server.SimpleHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/' or self.path == '/health':
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                response = {
+                    "status": "healthy",
+                    "service": "gestor_proyectos_db",
+                    "timestamp": time.time(),
+                    "version": "1.0.0"
+                }
+                import json
+                self.wfile.write(json.dumps(response).encode())
+            else:
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.wfile.write(b'''
+                <html>
+                <body>
+                    <h1>Gestor Proyectos DB - Railway</h1>
+                    <p>Sistema activo y funcionando</p>
+                    <p>Deployment: Railway Production</p>
+                    <p><a href="/health">Health Check</a></p>
+                </body>
+                </html>
+                ''')
+    
+    def run_intelligent_system():
+        """Ejecutar sistema inteligente en background"""
+        try:
+            logger.info("Iniciando sistema inteligente en background...")
+            from intelligent_master_deploy import IntelligentDeploymentSystem
+            
+            deployment_system = IntelligentDeploymentSystem()
+            deployment_system.execute_intelligent_deployment()
+            logger.info("Sistema inteligente inicializado")
+            
+            # Mantener sistema activo
+            while True:
+                time.sleep(300)  # 5 minutos
+                logger.info("Sistema inteligente activo")
+                
+        except ImportError as e:
+            logger.warning(f"Sistema inteligente no disponible: {e}")
+        except Exception as e:
+            logger.error(f"Error en sistema inteligente: {e}")
     
     try:
-        while True:
-            time.sleep(30)
-            logger.info("Aplicacion funcionando - modo inteligente")
+        # Iniciar sistema inteligente en background
+        intelligent_thread = Thread(target=run_intelligent_system, daemon=True)
+        intelligent_thread.start()
+        
+        # Iniciar servidor HTTP (principal)
+        with socketserver.TCPServer(("", port), HealthHandler) as httpd:
+            logger.info(f"Servidor HTTP iniciado en puerto {port}")
+            logger.info("Healthcheck endpoint disponible en /")
+            httpd.serve_forever()
             
-    except KeyboardInterrupt:
-        logger.info("Interrupcion recibida - cerrando...")
     except Exception as e:
-        logger.error(f"Error en keep_alive: {e}")
-        raise
-
-def keep_alive_basic():
-    """Mantener aplicacion viva en modo basico"""
-    logger.info("Aplicacion iniciada - modo basico")
-    
-    try:
-        while True:
-            time.sleep(60)
-            logger.info("Aplicacion funcionando - modo basico")
-            
-    except KeyboardInterrupt:
-        logger.info("Interrupcion recibida - cerrando...")
-    except Exception as e:
-        logger.error(f"Error en keep_alive_basic: {e}")
-        raise
+        logger.error(f"Error en servidor HTTP: {e}")
+        # Fallback a servidor simple
+        simple_web_server()
 
 def simple_web_server():
     """Servidor web simple para modo de supervivencia"""
     import http.server
     import socketserver
-    from threading import Thread
     
     port = int(os.environ.get('PORT', 8080))
     
@@ -177,10 +188,10 @@ def simple_web_server():
     
     try:
         with socketserver.TCPServer(("", port), SimpleHandler) as httpd:
-            logger.info(f"Servidor HTTP iniciado en puerto {port}")
+            logger.info(f"Servidor HTTP simple iniciado en puerto {port}")
             httpd.serve_forever()
     except Exception as e:
-        logger.error(f"Error en servidor HTTP: {e}")
+        logger.error(f"Error en servidor HTTP simple: {e}")
         # Fallback final - solo mantenerse vivo
         while True:
             time.sleep(120)
