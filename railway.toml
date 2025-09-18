@@ -1,15 +1,21 @@
 [build]
-# Especificar que es un proyecto Python
+# Especificar explícitamente que es un proyecto Python
 builder = "NIXPACKS"
+buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-# Comando para iniciar la aplicación (usar el sistema inteligente)
+# Comando para iniciar la aplicación
 startCommand = "python railway_deploy.py"
-# Puerto por defecto
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
 [env]
-# Variables de entorno para Railway
+# Variables de entorno críticas para Railway
 PYTHONPATH = "."
 PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"
+
+# Configuración específica para Railway
+[settings]
+# Detectar automáticamente el puerto
+detectPort = true

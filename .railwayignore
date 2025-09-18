@@ -1,0 +1,47 @@
+# Railway Ignore File
+# Excluir archivos innecesarios del deployment
+
+# Archivos de desarrollo
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+
+# Archivos de datos locales
+app_outputs/
+logs/
+*.log
+
+# Archivos de configuración local
+.env.local
+.env.development
+
+# Archivos de test
+test_*.py
+*_test.py
+tests/
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Node modules (si existen)
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# Archivos temporales
+*.tmp
+*.temp
