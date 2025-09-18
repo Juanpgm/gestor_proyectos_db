@@ -1,0 +1,17 @@
+# Railway Railpack Configuration
+# Configuración específica para que Railpack detecte correctamente el proyecto
+
+[project]
+type = "python"
+python_version = "3.12"
+
+[build]
+install_command = "pip install -r requirements.txt"
+build_command = "python -m py_compile railway_deploy.py"
+
+[start]
+command = "python railway_deploy.py"
+
+[env]
+PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"
