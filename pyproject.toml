@@ -1,47 +1,104 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68.0", "wheel>=0.40.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "gestor-proyectos-db"
 version = "1.0.0"
-description = "Sistema Inteligente de Gestión de Base de Datos para Proyectos"
+description = "Sistema Inteligente de Gestión de Base de Datos para Proyectos - Railway Ready"
 readme = "README.md"
+license = {text = "MIT"}
 requires-python = ">=3.11"
 authors = [
-    {name = "Sistema Inteligente", email = "sistema@inteligente.com"},
+    {name = "Sistema Inteligente", email = "admin@gestorproyectosdb.com"},
 ]
+maintainers = [
+    {name = "Railway Deployment Team", email = "deploy@gestorproyectosdb.com"},
+]
+keywords = ["railway", "database", "postgresql", "postgis", "intelligent", "deployment"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Framework :: Railway",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "psycopg2-binary>=2.9.0",
-    "python-dotenv==1.0.0",
-    "pydantic==2.4.2",
-    "pydantic-settings==2.0.3",
-    "sqlalchemy==2.0.21",
-    "geoalchemy2==0.14.1",
-    "alembic==1.12.0",
-    "click==8.1.7",
-    "rich==13.6.0",
-    "schedule>=1.1.0",
-    "psutil>=5.9.0",
-    "pandas>=2.0.0",
+    "psycopg2-binary>=2.9.7",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.4.2",
+    "pydantic-settings>=2.0.3",
+    "sqlalchemy>=2.0.21",
+    "geoalchemy2>=0.14.1",
+    "alembic>=1.12.0",
+    "click>=8.1.7",
+    "rich>=13.6.0",
+    "schedule>=1.2.0",
+    "psutil>=5.9.5",
+    "pandas>=2.1.0",
     "numpy>=1.24.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.2",
+    "pytest-asyncio>=0.21.1",
+    "black>=23.9.1",
+    "flake8>=6.1.0",
+    "mypy>=1.6.1",
+]
+railway = [
+    "gunicorn>=21.2.0",
+    "uvicorn>=0.23.0",
+]
+
 [project.scripts]
+railway-app = "app:main"
 railway-deploy = "railway_deploy:main"
 intelligent-deploy = "intelligent_master_deploy:main"
+gestordb = "main:main"
+
+[project.urls]
+Homepage = "https://github.com/Juanpgm/gestor_proyectos_db"
+Documentation = "https://github.com/Juanpgm/gestor_proyectos_db/wiki"
+Repository = "https://github.com/Juanpgm/gestor_proyectos_db.git"
+"Bug Tracker" = "https://github.com/Juanpgm/gestor_proyectos_db/issues"
+"Railway Deploy" = "https://railway.app"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["*"]
-exclude = ["tests*", "app_outputs*", "logs*"]
+exclude = ["tests*", "app_outputs*", "logs*", "env*", ".venv*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.toml", "*.txt", "*.md"]
+"*" = ["*.toml", "*.txt", "*.md", "*.json", "*.yml", "*.yaml"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | env
+  | .venv
+  | app_outputs
+  | logs
+)/
+'''
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

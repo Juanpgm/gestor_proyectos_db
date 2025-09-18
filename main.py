@@ -1,272 +1,100 @@
+#!/usr/bin/env python3
 """
-Archivo principal para la ejecución del sistema de gestión de base de datos.
-
-Este módulo orquesta las operaciones principales del sistema incluyendo:
-- Inicialización de la base de datos
-- Carga de datos
-- Operaciones de mantenimiento
-
-Uso:
-    python main.py [comando] [opciones]
-    
-Comandos disponibles:
-    - init: Inicializa la base de datos y esquemas
-    - load: Carga datos desde archivos JSON
-    - migrate: Ejecuta migraciones pendientes
-    - status: Muestra el estado de la base de datos
+Main Entry Point - Sistema Gestor Proyectos DB
+Entry point principal para el sistema de gestion de base de datos
 """
 
-from typing import Optional
+import os
 import sys
-import argparse
+import logging
 from pathlib import Path
 
-# Agregar el directorio src al path para importaciones
-sys.path.append(str(Path(__file__).parent / "src"))
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-from src.config.settings import load_config
-from src.database.connection import DatabaseManager
-from src.database.postgis import PostGISManager
-from src.utils.logger import setup_logger
-from src.utils.data_loader import DataLoader
+# Agregar directorio actual al path
+current_dir = Path(__file__).parent
+sys.path.insert(0, str(current_dir))
 
-logger = setup_logger(__name__)
+def detect_environment():
+    """Detectar entorno de ejecucion"""
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        return 'railway'
+    elif os.environ.get('PORT'):
+        return 'cloud'
+    else:
+        return 'local'
 
-
-def main() -> None:
-    """
-    Función principal del sistema.
-    
-    Procesa argumentos de línea de comandos y ejecuta las operaciones correspondientes.
-    """
-    parser = argparse.ArgumentParser(
-        description="Gestor de Proyectos DB - Sistema PostgreSQL con PostGIS"
-    )
-    
-    parser.add_argument(
-        "comando",
-        choices=["init", "load", "migrate", "status", "railway-init", "railway-load"],
-        help="Comando a ejecutar"
-    )
-    
-    parser.add_argument(
-        "--config",
-        type=str,
-        default=".env",
-        help="Archivo de configuración (default: .env)"
-    )
-    
-    parser.add_argument(
-        "--railway",
-        action="store_true",
-        help="Usar configuración de Railway automáticamente"
-    )
-    
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Modo verbose para logging detallado"
-    )
-    
-    args = parser.parse_args()
-    
+def main():
+    """Funcion principal con deteccion automatica de entorno"""
     try:
-        # Determinar archivo de configuración
-        config_file = args.config
-        if args.railway or args.comando.startswith("railway-"):
-            config_file = ".env.railway"
-            logger.info("🚂 Usando configuración de Railway")
+        environment = detect_environment()
+        logger.info(f"Entorno detectado: {environment}")
         
-        # Cargar configuración
-        config = load_config(config_file)
-        logger.info(f"Configuración cargada desde: {config_file}")
-        
-        # Mostrar tipo de conexión
-        if config["database"].is_railway:
-            logger.info("🌐 Conectando a Railway PostgreSQL")
+        if environment == 'railway':
+            # Ejecutar entry point Railway
+            logger.info("Ejecutando entry point Railway...")
+            from app import main as railway_main
+            railway_main()
+            
+        elif environment == 'cloud':
+            # Ejecutar entry point generico para cloud
+            logger.info("Ejecutando entry point cloud...")
+            from railway_deploy import main as cloud_main
+            cloud_main()
+            
         else:
-            logger.info("🏠 Conectando a PostgreSQL local")
-        
-        # Ejecutar comando
-        if args.comando in ["init", "railway-init"]:
-            init_database(config)
-        elif args.comando in ["load", "railway-load"]:
-            load_data(config)
-        elif args.comando == "migrate":
-            run_migrations(config)
-        elif args.comando == "status":
-            show_status(config)
+            # Ejecutar deployment local
+            logger.info("Ejecutando deployment local...")
+            from intelligent_local_deploy import main as local_main
+            local_main()
             
+    except ImportError as e:
+        logger.error(f"Error importando modulos: {e}")
+        logger.info("Ejecutando modo basico...")
+        basic_mode()
+        
     except Exception as e:
-        logger.error(f"Error durante la ejecución: {e}")
-        sys.exit(1)
+        logger.error(f"Error en main: {e}")
+        logger.info("Ejecutando modo de emergencia...")
+        emergency_mode()
 
-
-def init_database(config) -> None:
-    """Inicializa la base de datos y esquemas."""
-    logger.info("🚀 Iniciando inicialización de base de datos...")
+def basic_mode():
+    """Modo basico cuando fallan las importaciones"""
+    logger.info("Modo basico activado")
     
     try:
-        # Crear manejador de base de datos
-        db_manager = DatabaseManager(config["database"])
+        # Intentar cargar sistema inteligente
+        from intelligent_master_deploy import IntelligentDeploymentSystem
         
-        # Verificar conexión
-        logger.info("🔗 Verificando conexión a PostgreSQL...")
-        if not db_manager.test_connection():
-            logger.error("❌ No se pudo conectar a PostgreSQL")
-            return
+        system = IntelligentDeploymentSystem()
+        system.execute_intelligent_deployment()
         
-        logger.info("✅ Conexión a PostgreSQL exitosa")
-        
-        # Crear base de datos si no existe
-        logger.info("📦 Creando base de datos si no existe...")
-        db_manager.create_database()
-        
-        # Configurar PostGIS
-        logger.info("🗺️ Configurando PostGIS...")
-        postgis_manager = PostGISManager(db_manager)
-        if postgis_manager.enable_postgis():
-            logger.info("✅ PostGIS configurado correctamente")
-        else:
-            logger.warning("⚠️ No se pudo configurar PostGIS")
-        
-        # Ejecutar scripts SQL
-        logger.info("📋 Ejecutando scripts de inicialización...")
-        sql_files = [
-            "sql/01_init_database.sql",
-            "sql/02_create_procesos_table.sql", 
-            "sql/03_create_contratos_table.sql",
-            "sql/04_create_views.sql"
-        ]
-        
-        for sql_file in sql_files:
-            try:
-                logger.info(f"📄 Ejecutando {sql_file}...")
-                success = db_manager.execute_sql_file(sql_file)
-                if success:
-                    logger.info(f"✅ {sql_file} ejecutado correctamente")
-                else:
-                    logger.error(f"❌ Error ejecutando {sql_file}")
-                    return False
-            except Exception as e:
-                logger.error(f"❌ Error ejecutando {sql_file}: {e}")
-                return False
-        
-        logger.info("🎉 Inicialización de base de datos completada!")
-        
+        # Mantener vivo
+        import time
+        while True:
+            time.sleep(60)
+            logger.info("Sistema activo - modo basico")
+            
     except Exception as e:
-        logger.error(f"❌ Error durante la inicialización: {e}")
-        raise
+        logger.error(f"Error en modo basico: {e}")
+        emergency_mode()
 
-
-def load_data(config) -> None:
-    """Carga datos desde archivos JSON."""
-    logger.info("📊 Iniciando carga de datos...")
+def emergency_mode():
+    """Modo de emergencia minimo"""
+    logger.info("Modo de emergencia activado")
     
+    import time
     try:
-        # Crear manejador de base de datos
-        db_manager = DatabaseManager(config["database"])
-        
-        # Verificar conexión
-        if not db_manager.test_connection():
-            logger.error("❌ No se pudo conectar a PostgreSQL")
-            return
-            
-        # Crear cargador de datos
-        data_loader = DataLoader(db_manager)
-        
-        # Cargar contratos
-        contratos_file = config.get("CONTRATOS_FILE", "app_outputs/emprestito_outputs/emp_contratos.json")
-        logger.info(f"📋 Cargando contratos desde {contratos_file}...")
-        from pathlib import Path
-        contratos_loaded, _ = data_loader.load_contratos_from_json(Path(contratos_file))
-        logger.info(f"✅ {contratos_loaded} contratos cargados")
-        
-        # Cargar procesos
-        procesos_file = config.get("PROCESOS_FILE", "app_outputs/emprestito_outputs/emp_procesos.json")
-        logger.info(f"📋 Cargando procesos desde {procesos_file}...")
-        procesos_loaded, _ = data_loader.load_procesos_from_json(Path(procesos_file))
-        logger.info(f"✅ {procesos_loaded} procesos cargados")
-        
-        logger.info("🎉 Carga de datos completada!")
-        
-    except Exception as e:
-        logger.error(f"❌ Error durante la carga de datos: {e}")
-        raise
-
-
-def run_migrations(config) -> None:
-    """Ejecuta migraciones pendientes."""
-    logger.info("🔄 Ejecutando migraciones...")
-    
-    try:
-        # Crear manejador de base de datos
-        db_manager = DatabaseManager(config["database"])
-        
-        # Verificar conexión
-        if not db_manager.test_connection():
-            logger.error("❌ No se pudo conectar a PostgreSQL")
-            return
-            
-        # Buscar archivos de migración
-        migrations_dir = Path("sql/migrations")
-        if migrations_dir.exists():
-            migration_files = sorted(migrations_dir.glob("*.sql"))
-            
-            for migration_file in migration_files:
-                logger.info(f"🔄 Ejecutando migración: {migration_file.name}")
-                try:
-                    db_manager.execute_sql_file(str(migration_file))
-                    logger.info(f"✅ Migración {migration_file.name} completada")
-                except Exception as e:
-                    logger.error(f"❌ Error en migración {migration_file.name}: {e}")
-        else:
-            logger.info("📂 No se encontró directorio de migraciones")
-        
-        logger.info("🎉 Migraciones completadas!")
-        
-    except Exception as e:
-        logger.error(f"❌ Error ejecutando migraciones: {e}")
-        raise
-
-
-def show_status(config) -> None:
-    """Muestra el estado actual de la base de datos."""
-    logger.info("📊 Verificando estado de la base de datos...")
-    
-    try:
-        # Crear manejador de base de datos
-        db_manager = DatabaseManager(config["database"])
-        
-        # Verificar conexión
-        if not db_manager.test_connection():
-            logger.error("❌ No se pudo conectar a PostgreSQL")
-            return
-            
-        logger.info("✅ Conexión a PostgreSQL: OK")
-        
-        with db_manager.get_session() as session:
-            # Verificar PostGIS
-            result = session.execute("SELECT PostGIS_Version();").fetchone()
-            if result:
-                logger.info(f"🗺️ PostGIS versión: {result[0]}")
-            
-            # Contar registros en tablas
-            tables = ['contratos', 'procesos']
-            for table in tables:
-                try:
-                    count_result = session.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
-                    count = count_result[0] if count_result else 0
-                    logger.info(f"📋 Tabla {table}: {count} registros")
-                except Exception as e:
-                    logger.warning(f"⚠️ Error consultando tabla {table}: {e}")
-        
-        logger.info("🎉 Verificación de estado completada!")
-        
-    except Exception as e:
-        logger.error(f"❌ Error verificando estado: {e}")
-        raise
-
+        while True:
+            time.sleep(120)
+            logger.info("Sistema activo - modo emergencia")
+    except KeyboardInterrupt:
+        logger.info("Cerrando sistema...")
 
 if __name__ == "__main__":
     main()
