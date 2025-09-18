@@ -168,8 +168,7 @@ migrations/temp_*
 migration_*.tmp
 
 # Archivos de configuración de Railway específicos
-railway.json
-railway.toml
+# railway.json (solo este, no los principales)
 .railway/
 
 # Archivos de desarrollo local
