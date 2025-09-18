@@ -1,0 +1,34 @@
+# Dependencias principales para el Sistema Inteligente de Despliegue y Monitoreo
+
+# Base de datos
+psycopg2-binary>=2.9.5
+SQLAlchemy>=1.4.0
+
+# Configuración y entorno
+python-dotenv>=0.19.0
+pydantic>=1.8.0
+
+# Monitoreo y scheduling
+schedule>=1.1.0
+
+# Utilidades de desarrollo
+rich>=12.0.0
+click>=8.0.0
+
+# Dependencias existentes del proyecto original
+requests>=2.25.0
+pandas>=1.3.0
+geopandas>=0.10.0
+
+# Testing (opcional)
+pytest>=6.2.0
+pytest-cov>=2.12.0
+
+# Linting y formateo (opcional)
+black>=21.0.0
+flake8>=3.9.0
+mypy>=0.812
+
+# Documentación (opcional)
+mkdocs>=1.2.0
+mkdocs-material>=7.0.0
